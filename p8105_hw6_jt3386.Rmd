@@ -7,6 +7,7 @@ output: github_document
 
 ```{r, include = FALSE,message=FALSE,warning=FALSE}
 library(tidyverse)
+library(modelr)
 
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -143,3 +144,93 @@ logistic_df %>%
   )
 ```
 
+The estimated OR varies among the cities,the lowest OR is in New York, which indicates that in New York, homicides in which the victim is male are significantly less like to be resolved than those in which the victim is female. However, the highest OR is in Albuquerque, which indicates that homicides in which the victim is male are more likely to be resolved than those in which the victim is female. As we can see some intervals are really wide because the sample size is quite small. So we should investigate more before jumping to conclusion.
+
+### Problem 3
+
+First, we load the data.
+
+```{r}
+bw_df = 
+  read_csv("data/birthweight.csv") %>% 
+  mutate(
+     babysex = factor(babysex,levels = c(1, 2),labels = c("Male", "Female")),
+         frace = factor(frace, levels = c(1, 2, 3, 4, 8, 9),labels = c("White", "Black", "Asian", "Puerto Rican", "Other", "Unknown")), 
+         malform = factor(malform,levels = c(0, 1),labels = c("Absent", "Present")),
+         mrace = factor(mrace,levels = c(1, 2, 3, 4, 8),labels = c("White", "Black", "Asian", "Puerto Rican", "Other"))
+  ) %>% 
+  na.omit() 
+
+bw_df
+```
+
+After skimming the data, I propose that `babysex`, `bhead`, `blength`, `gaweeks`, `malform`, `smoken`, `wtgain` would contribute most to the `bwt`. I think a baby's characteristics would affect his weight, so I put in all variables about babies. Then I think gestational age, mother smoking, and mother's gained weight are also important. Finally, I think malformation could influence a baby's weight. So it is my first model.
+
+```{r}
+fit_model = lm(bwt ~ babysex + bhead + blength + gaweeks + malform + smoken + wtgain, data = bw_df)
+
+summary(fit_model)
+```
+
+We can see that `malform` variable is not that statistically significant, so we would like to remove it.
+
+```{r}
+fit_model = lm(bwt ~ babysex + bhead + blength + gaweeks + smoken + wtgain, data = bw_df)
+
+summary(fit_model)
+```
+
+Then it looks great. We plot residuals against fitted values.
+
+```{r}
+bw_df %>% 
+  add_residuals(fit_model) %>% 
+  add_predictions(fit_model) %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point() +
+  labs(
+    x = "Fitted Values",
+    y = "Residuals"
+  )
+```
+
+The residuals are around 0, and the fitted values are around 3000. There are several extreme points, but that does not matter.
+
+Then we compare the models using cross validation.
+
+```{r}
+cv_df = 
+  crossv_mc(bw_df, 100) %>% 
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)
+  )
+
+cv_df = 
+  cv_df %>% 
+  mutate(
+    model_1  = map(.x = train, ~lm(bwt ~ blength + gaweeks, data = bw_df)),
+    model_2  = map(.x = train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + blength*babysex + bhead*babysex + bhead*blength*babysex, data = bw_df)),
+    my_model  = map(.x = train, ~lm(bwt ~ babysex + bhead + blength + gaweeks + smoken + wtgain, data = bw_df))) %>% 
+  mutate(
+    rmse_model_1 = map2_dbl(model_1, test, ~rmse(model = .x, data = .y)),
+    rmse_model_2 = map2_dbl(model_2, test, ~rmse(model = .x, data = .y)),
+    rmse_my_model = map2_dbl(my_model, test, ~rmse(model = .x, data = .y)))
+```
+
+Finally, we make a plot to show the distribution of RMSE
+
+```{r}
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin()
+```
+
+As we can see, my model is slightly better than model 2, and might be the best among the three models.
