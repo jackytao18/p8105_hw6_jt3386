@@ -209,7 +209,7 @@ logistic_df %>%
   )
 ```
 
-The estimated OR varies among the cities,the lowest OR is in New York, which indicates that in New York, homicides in which the victim is male are significantly less like to be resolved than those in which the victim is female. However, the highest OR is in Albuquerque, which indicates that homicides in which the victim is male are more likely to be resolved than those in which the victim is female. As we can see some intervals are really wide because the sample size is quite small. So we should investigate more before jumping to conclusion.
+The estimated OR varies among the cities. The lowest OR is in New York, and the upper limit doesn't exceed 1, which indicates that in New York, homicides in which the victim is male are significantly less like to be resolved than those in which the victim is female. However, the highest OR is in Albuquerque, which indicates that homicides in which the victim is male are more likely to be resolved than those in which the victim is female. As we can see some confidence intervals are really wide because the sample size is quite small. There may be some relationships between sex and disposition, but we should investigate more before jumping to conclusion.
 
 ### Problem 3
 
