@@ -229,28 +229,19 @@ bw_df =
 bw_df
 ```
 
-After skimming the data, I propose that `babysex`, `bhead`, `blength`, `gaweeks`, `malform`, `smoken`, `wtgain` would contribute most to the `bwt`. I think a baby's characteristics would affect his weight, so I put in all variables about babies. Then I think gestational age, mother smoking, and mother's gained weight are also important. Finally, I think malformation could influence a baby's weight. So it is my first model.
+My strategy is to fit the full model first, and then use backward method to select the variables.
 
 ```{r}
-fit_model = lm(bwt ~ babysex + bhead + blength + gaweeks + malform + smoken + wtgain, data = bw_df)
-
-summary(fit_model)
+full_model = lm(bwt ~ ., data = bw_df)
+final_model = step(full_model, direction = "backward")
+final_model$call
 ```
 
-We can see that `malform` variable is not that statistically significant, so we would like to remove it.
-
-```{r}
-fit_model = lm(bwt ~ babysex + bhead + blength + gaweeks + smoken + wtgain, data = bw_df)
-
-summary(fit_model)
-```
-
-Then it looks great. We plot residuals against fitted values.
 
 ```{r}
 bw_df %>% 
-  add_residuals(fit_model) %>% 
-  add_predictions(fit_model) %>% 
+  add_residuals(final_model) %>% 
+  add_predictions(final_model) %>% 
   ggplot(aes(x = pred, y = resid)) +
   geom_point() +
   labs(
@@ -276,7 +267,7 @@ cv_df =
   mutate(
     model_1  = map(.x = train, ~lm(bwt ~ blength + gaweeks, data = bw_df)),
     model_2  = map(.x = train, ~lm(bwt ~ bhead + blength + babysex + bhead*blength + blength*babysex + bhead*babysex + bhead*blength*babysex, data = bw_df)),
-    my_model  = map(.x = train, ~lm(bwt ~ babysex + bhead + blength + gaweeks + smoken + wtgain, data = bw_df))) %>% 
+    my_model  = map(.x = train, ~lm(bwt ~ babysex + bhead + blength + delwt + fincome + gaweeks + mheight + mrace + parity + ppwt + smoken, data = bw_df))) %>% 
   mutate(
     rmse_model_1 = map2_dbl(model_1, test, ~rmse(model = .x, data = .y)),
     rmse_model_2 = map2_dbl(model_2, test, ~rmse(model = .x, data = .y)),
@@ -298,4 +289,4 @@ cv_df %>%
   geom_violin()
 ```
 
-As we can see, my model is slightly better than model 2, and might be the best among the three models.
+As we can see, my model's RMSE is the smallest, it's better than model 2, and might be the best among the three models.
